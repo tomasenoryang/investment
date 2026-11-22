@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A 股估值曲线</title>
+<style>
+  :root { font-family: system-ui, sans-serif; color: #172941; background: #edf1f6; }
+  body { margin: 0; padding-left: 32px; }
+  #watch-directory-toggle { position: fixed; z-index: 2; left: 0; top: 20vh; writing-mode: vertical-rl;
+    width: 32px; padding: 12px 5px; border-radius: 0 8px 8px 0; font-size: 14px; letter-spacing: .12em; }
+  #watch-directory { box-sizing: border-box; position: fixed; inset: 20vh auto auto 38px; margin: 0;
+    width: min(320px, calc(100vw - 50px)); max-height: 70vh; overflow-y: auto;
+    padding: 14px; border: 1px solid #c7d3e1; border-radius: 12px; color: inherit;
+    box-shadow: 0 8px 28px #17294124; background: white; }
+  #watch-directory h2 { padding: 4px 8px 8px; margin: 0; font-size: 17px; }
+  #watch-directory ul { margin: 0; padding: 0; list-style: none; }
+  #watch-directory a { display: block; padding: 10px 8px; border-radius: 6px; text-decoration: none;
+    line-height: 1.45; overflow-wrap: anywhere; }
+  #watch-directory a:hover, #watch-directory a:focus-visible { background: #edf4fc; }
+  .watch-item { scroll-margin-top: 16px; }
+  main { width: min(1080px, 92%); margin: 48px auto; }
+  h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 24px; letter-spacing: -.04em; }
+  form, figure { margin: 0; border: 1px solid #dce4ef; border-radius: 16px; background: white; }
+  form { padding: 20px; display: flex; align-items: end; flex-wrap: wrap; gap: 14px; }
+  label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+  input, select, button { box-sizing: border-box; min-height: 42px; font: inherit; border: 1px solid #b8c6d7; border-radius: 8px; padding: 8px 12px; }
+  input { width: 150px; }
+  button { border-color: #1657a2; background: #1657a2; color: #fff; cursor: pointer; }
+  button:disabled { opacity: .65; cursor: wait; }
+  figure { overflow: hidden; }
+  #market-choice[hidden] { display: none; }
+  .index-charts { display: grid; gap: 18px; margin-bottom: 24px; }
+  h2 { margin: 0 0 12px; font-size: 22px; }
+  .index-note { color: #445875; margin: 12px 0 16px; }
+  .index-range { display: inline-grid; }
+  .drivers { background: white; border: 1px solid #dce4ef; border-radius: 16px; padding: 18px; margin: 12px 0; }
+  .drivers h3 { margin: 0 0 12px; }
+  .drivers .driver-row { display: grid; grid-template-columns: minmax(80px,1fr) 2fr 68px; align-items: center; gap: 8px; margin: 8px 0; }
+  .driver-track { position: relative; height: 14px; background: linear-gradient(to right, transparent 49.8%, #8899ab 50%, transparent 50.2%); }
+  .driver-bar { position: absolute; top: 3px; height: 8px; background: #27679b; border-radius: 3px; }
+  .drivers small { color: #45566b; }
+  .watch-item { margin-top: 22px; }
+  .watch-item h3 { margin: 0 0 10px; font-size: 18px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .tabs button[aria-pressed="false"] { background: white; color: #1657a2; }
+  img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 14px 20px; color: #445875; }
+  .query-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .watch-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+    gap: 12px; margin-bottom: 10px; }
+  .watch-filters { display: inline-flex; max-width: 100%; padding: 3px; gap: 2px; border-radius: 10px;
+    background: #dfe6ef; }
+  .watch-filters button { background: transparent; border: 0; min-height: 36px; padding: 6px 12px;
+    color: #445875; font-size: 14px; }
+  .watch-filters button[aria-pressed="true"] { background: white; color: #164f90; font-weight: 650;
+    box-shadow: 0 1px 3px #17294126; }
+  .watch-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 20px; }
+  .watch-group { margin-top: 24px; }
+  .watch-group > h3 { font-size: 20px; margin: 0; padding-bottom: 8px; border-bottom: 1px solid #c8d3df; }
+  .watch-group-list:empty::after { content: "暂无关注"; display: block; margin: 12px 0; color: #596b80; }
+  #watch-items:not(:has(.watch-item)) { display: none; }
+  #watch-directory li > strong { display: block; margin: 10px 8px 2px; font-size: 13px; color: #586a80; }
+  .watch-options label { padding: 6px 8px; font-size: 13px; color: #455468; }
+  .watch-heading h4 { font-size: 18px; margin: 0; overflow-wrap: anywhere; }
+  .watch-state { min-height: 34px; padding: 5px 10px; border: 0; border-radius: 8px;
+    background: #e2e7ed; color: #455468; font-size: 14px; white-space: nowrap; }
+  .watch-state:is(:hover, :focus-visible, :open) { background: #d6dde5; }
+  @media (pointer: coarse) { .watch-state { min-height: 44px; } }
+  .watch-options { position-area: bottom span-left; position-try-fallbacks: flip-block;
+    justify-self: end; inset: auto; margin: 4px 0; padding: 4px; border: 1px solid #dce4ef;
+    border-radius: 10px; box-shadow: 0 4px 16px #1729411a; }
+  .watch-options button { min-height: 44px; padding: 8px 16px; border: 0; background: white;
+    color: #833e38; font-size: 14px; }
+  .watch-options button:is(:hover, :focus-visible) { background: #fbf2f1; }
+  #status { min-height: 1.5em; }
+  #stock-result, #benchmark-result { margin-bottom: 24px; }
+  a { color: #1657a2; }
+  .chart-surface { position: relative; }
+  .chart-surface:focus-visible { outline: 2px solid #1657a2; outline-offset: -2px; }
+  .chart-focus { position: absolute; top: 0; left: 0; width: 100%; height: auto; pointer-events: none; }
+  .chart-focus path { fill: none; stroke: #526682; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+  .chart-focus circle { fill: #1765bd; stroke: white; stroke-width: 2; }
+  .chart-interaction { container-type: inline-size; background: #f7f9fc; }
+  /* Both SVG templates put the date ticks at y=445–448 on a 1040-unit canvas. */
+  .chart-interaction { --axis-end: calc(100cqw * 456 / 1040); }
+  .chart-surface { max-height: var(--axis-end); overflow: clip; }
+  .chart-tooltip { min-height: 1.4em; padding: 2px 3% 2px 7.69%; color: #174777;
+    font-size: clamp(13px, 1.5cqw, 18px); line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .chart-notes { overflow: clip; display: flow-root; }
+  .chart-notes img { margin-top: calc(0px - var(--axis-end)); }
+  main figure { position: relative; }
+  .chart-expand { position: absolute; top: 10px; right: 10px; z-index: 1; display: grid;
+    place-items: center; width: 36px; min-height: 36px; padding: 0; font-size: 21px; line-height: 1;
+    background: white; color: #1657a2; border-color: #b8c6d7; }
+  .chart-close { display: grid; place-items: center; width: 36px; min-height: 36px; padding: 0;
+    font-size: 24px; line-height: 1; background: white; color: #1657a2; border-color: #b8c6d7; }
+  .chart-expand:hover, .chart-close:hover { background: #e8f1fb; }
+  .chart-dialog { width: min(1320px, 94vw); max-width: none; max-height: 94vh; box-sizing: border-box;
+    padding: 14px; border: 1px solid #dce4ef; border-radius: 14px; }
+  .latest-close { display: block; padding: 12px 16px 4px; font-weight: 650; }
+  .latest-close:empty { display: none; }
+  .chart-dialog::backdrop { background: #172941a6; }
+  .chart-dialog form { display: flex; justify-content: flex-end; padding: 0 0 10px; border: 0; }
+</style>
+<button type="button" id="watch-directory-toggle" popovertarget="watch-directory">关注目录</button>
+<nav id="watch-directory" popover aria-labelledby="watch-directory-title">
+  <h2 id="watch-directory-title">我的关注</h2>
+  <a href="#watch-panel">全部关注</a>
+  <ul></ul>
+</nav>
+<main>
+  <h1>A 股估值曲线</h1>
+  <h2>股票、基金与指数查询</h2>
+  <form id="query">
+    <label>代码 <input id="code" pattern="[0-9A-Za-z]{1,6}" maxlength="6" placeholder="输入证券代码" required></label>
+    <label id="market-choice" hidden>匹配品种 <select id="market" disabled></select></label>
+    <label>历史区间 <select id="years"><option value="1">近一年</option><option value="3">近三年</option><option value="5" selected>近五年</option><option value="10">近十年</option></select></label>
+    <button>查看曲线</button>
+  </form>
+  <div class="query-actions"><p id="status" role="status"></p><button type="button" id="add-watch" hidden>加入我的关注</button></div>
+  <section class="drivers" id="query-drivers" hidden></section>
+  <figure id="price-result" hidden>
+    <output class="latest-close" aria-label="最近收盘价"></output>
+    <img alt="股票日收盘价曲线">
+    <figcaption><a download>下载股价 SVG</a></figcaption>
+  </figure>
+  <figure id="stock-result" hidden>
+    <img id="chart" alt="">
+    <figcaption><span id="result-note"></span> <a id="download" download>下载 SVG</a></figcaption>
+  </figure>
+  <figure id="fund-comparison" hidden>
+          <img alt="基金与合同业绩基准收益对比">
+          <figcaption><a download>下载收益对比图</a></figcaption>
+        </figure>
+  <figure id="benchmark-result" hidden>
+    <img id="benchmark-chart" alt="基金跟踪指数的市盈率曲线">
+    <figcaption><a id="benchmark-download" download>下载跟踪指数估值 SVG</a></figcaption>
+  </figure>
+  <nav class="tabs" aria-label="图表分类">
+    <button type="button" aria-pressed="true" aria-controls="indices-panel">指数估值</button>
+    <button type="button" aria-pressed="false" aria-controls="gold-panel">黄金</button>
+    <button type="button" aria-pressed="false" aria-controls="watch-panel">我的关注</button>
+  </nav>
+  <section id="indices-panel" aria-labelledby="index-title">
+    <h2 id="index-title">指数估值</h2>
+    <label class="index-range">指数时间区间
+      <select id="index-range">
+        <option value="1w">近一周</option><option value="1m" selected>近一月</option>
+        <option value="1y">近一年</option><option value="3y">近三年</option>
+        <option value="5y">近五年</option><option value="10y">近十年</option>
+        <option value="all">成立以来</option>
+      </select>
+    </label>
+    <p class="index-note">刷新网页时同步数据。切换区间使用已保存数据。参考线按所选区间重算，数据截止日期见图表。</p>
+    <div class="index-charts">
+      <figure data-index="000300">
+        <img alt="沪深300滚动市盈率和三条历史参考线">
+        <figcaption><a href="/api/index-chart?code=000300&amp;range=1m" download="000300-pe-1m.svg">下载沪深300曲线</a></figcaption>
+      </figure>
+      <figure data-index="000688">
+        <img alt="科创50滚动市盈率和三条历史参考线">
+        <figcaption><a href="/api/index-chart?code=000688&amp;range=1m" download="000688-pe-1m.svg">下载科创50曲线</a></figcaption>
+      </figure>
+      <figure data-index="000852">
+        <img alt="中证1000滚动市盈率和三条历史参考线">
+        <figcaption><a href="/api/index-chart?code=000852&amp;range=1m" download="000852-pe-1m.svg">下载中证1000曲线</a></figcaption>
+      </figure>
+      <figure data-index="HSTECH">
+        <img alt="恒生科技指数市盈率和三条历史参考线">
+        <figcaption><a href="/api/index-chart?code=HSTECH&amp;range=1m" download="HSTECH-pe-1m.svg">下载恒生科技曲线</a></figcaption>
+      </figure>
+      <figure data-index="NDX">
+        <img alt="纳斯达克100指数滚动市盈率和三条历史参考线">
+        <figcaption><a href="/api/index-chart?code=NDX&amp;range=1m" download="NDX-pe-1m.svg">下载纳斯达克100曲线</a></figcaption>
+      </figure>
+    </div>
+  </section>
+  <section id="gold-panel" aria-labelledby="gold-title" hidden>
+    <h2 id="gold-title">黄金</h2>
+    <label class="index-range">金价时间区间
+      <select id="gold-range">
+        <option value="1w">近一周</option><option value="1m" selected>近一月</option>
+        <option value="1y">近一年</option><option value="3y">近三年</option>
+        <option value="5y">近五年</option><option value="10y">近十年</option>
+        <option value="all">全部历史</option>
+      </select>
+    </label>
+    <p class="index-note">手动刷新本页时同步黄金数据。价格 P20 和 P80 表示所选区间的历史价格分位。</p>
+    <div class="index-charts">
+      <figure data-gold="domestic">
+        <img alt="国内金价 Au99.99">
+        <figcaption><a download>下载国内金价图</a></figcaption>
+      </figure>
+      <figure data-gold="international">
+        <img alt="国际金价 XAU/USD">
+        <figcaption><a download>下载国际金价图</a></figcaption>
+      </figure>
+    </div>
+  </section>
+  <section id="watch-panel" aria-labelledby="watch-title" hidden>
+    <h2 id="watch-title" tabindex="-1">我的关注</h2>
+    <div class="watch-tools">
+      <div class="watch-filters" role="group" aria-label="关注分类">
+        <button type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button type="button" data-filter="fund" aria-pressed="false">基金</button>
+        <button type="button" data-filter="gold" aria-pressed="false">黄金</button>
+        <button type="button" data-filter="stock" aria-pressed="false">股票</button>
+      </div>
+      <label class="index-range">关注时间区间
+      <select id="watch-range">
+        <option value="1">近一年</option><option value="3">近三年</option>
+        <option value="5" selected>近五年</option><option value="10">近十年</option>
+      </select>
+      </label>
+    </div>
+    <div id="watch-items"></div>
+    <p id="watch-empty" hidden>暂无关注，可在上方查询代码后加入关注。</p>
+  </section>
+</main>
+<dialog class="chart-dialog" aria-label="放大查看曲线">
+  <form method="dialog"><button class="chart-close" type="submit" title="关闭浮窗" aria-label="关闭浮窗" autofocus>×</button></form>
+  <div id="dialog-chart"></div>
+</dialog>
+<script type="application/json" id="fund-indices">{}</script>
+<script>
+  const form = document.querySelector("#query");
+  const status = document.querySelector("#status");
+  const chart = document.querySelector("#chart");
+  const download = document.querySelector("#download");
+  const button = form.querySelector("button");
+  let chartUrl;
+  const marketSelect = document.querySelector("#market");
+  const codeInput = document.querySelector("#code");
+  const benchmark = document.querySelector("#benchmark-result");
+  const resultNote = document.querySelector("#result-note");
+  const marketChoice = document.querySelector("#market-choice");
+  const marketLabels = {a: "A 股", hk: "港股", fund: "基金", index: "指数"};
+  const price = document.querySelector("#price-result");
+  let matches = [];
+  let matchesDay;
+  codeInput.addEventListener("input", () => {
+    matches = [];
+    setWatchCandidate(null);
+    marketChoice.hidden = true;
+    marketSelect.disabled = true;
+  });
+  const chartRequests = new WeakMap();
+
+  const chartCache = new Map();
+  const shanghaiDate = new Intl.DateTimeFormat("en-CA", {timeZone: "Asia/Shanghai"});
+
+  const shanghaiClock = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  });
+
+  function chartKey(route) {
+    const url = new URL(route, location.href);
+    const wantsFresh = url.searchParams.has("sync") ||
+      (!url.searchParams.has("dashboard") && ["/api/chart", "/api/stock-price"].includes(url.pathname));
+    url.searchParams.delete("sync");
+    url.searchParams.delete("dashboard");
+    url.searchParams.sort();
+    const now = new Date();
+    let period = shanghaiDate.format(now);
+    if (url.pathname === "/api/stock-price") {
+      const cutoff = url.searchParams.get("market") === "hk" ? "16:10" : "15:00";
+      period += shanghaiClock.format(now) >= cutoff ? "-close" : "-open";
+    }
+    return period + url.pathname + url.search + (wantsFresh ? "|fresh" : "|saved");
+  }
+
+  function fetchChart(route) {
+    const key = chartKey(route);
+    const freshKey = key.replace(/\|saved$/, "|fresh");
+    if (chartCache.has(freshKey)) return chartCache.get(freshKey);
+    if (chartCache.has(key)) return chartCache.get(key);
+    const request = fetch(route).then(async (response) => {
+      if (!response.ok) throw new Error((await response.json()).message);
+      const stale = response.headers.has("X-Data-Stale");
+      const blob = await response.blob();
+      if (stale) chartCache.delete(key);
+      return {blob, stale, benchmarkCode: response.headers.get("X-Benchmark-Code")};
+    }).catch(error => {
+      chartCache.delete(key);
+      throw error;
+    });
+    chartCache.set(key, request);
+    if (chartCache.size > 64) chartCache.delete(chartCache.keys().next().value);
+    return request;
+  }
+
+  async function refreshFigure(figure, route, filename) {
+    const previous = chartRequests.get(figure);
+    const selectedRequest = fetchChart(route);
+    if (previous?.request === selectedRequest) return;
+    const state = {request: selectedRequest, url: previous?.url};
+    chartRequests.set(figure, state);
+    const image = figure.querySelector("img");
+    const link = figure.querySelector("figcaption a");
+    let message = figure.querySelector(".chart-update-status");
+    if (!message) {
+      message = document.createElement("span");
+      message.className = "chart-update-status";
+      message.setAttribute("role", "status");
+      figure.querySelector("figcaption").prepend(message);
+    }
+    const close = figure.querySelector(".latest-close");
+    if (close) close.textContent = "";
+    message.textContent = "正在加载图表… ";
+    try {
+      const {blob, stale} = await selectedRequest;
+      let summary = "";
+      if (close) {
+        const svg = new DOMParser().parseFromString(await blob.text(), "image/svg+xml");
+        const data = JSON.parse(svg.getElementById("chart-data").textContent);
+        const [, , day, value] = data.points.at(-1);
+        const amount = value.toLocaleString("zh-CN", {minimumFractionDigits: 2, maximumFractionDigits: 4});
+        summary = `股价走势 · 最近收盘价 ${amount} ${data.unit}（${day}）`;
+      }
+      if (chartRequests.get(figure) !== state) return;
+      const url = URL.createObjectURL(blob);
+      image.src = url;
+      link.href = url;
+      link.download = filename;
+      if (state.url) URL.revokeObjectURL(state.url);
+      state.url = url;
+      if (close) close.textContent = summary;
+      if (stale) state.request = null;
+      message.textContent = stale ? "本次更新失败，显示已保存数据。 " : "";
+    } catch (error) {
+      if (chartRequests.get(figure) === state && error.name !== "AbortError") {
+        state.request = null;
+        message.textContent = error.message || "暂时无法加载，请刷新网页同步后重试。";
+      }
+    }
+  }
+
+  const driverRequests = new WeakMap();
+  async function updateDrivers(id, market, code, query) {
+    const panel = document.getElementById(id);
+    const revision = Symbol();
+    driverRequests.set(panel, revision);
+    panel.hidden = false;
+    const previousWindow = panel.querySelector("select")?.value || "30";
+    panel.textContent = "正在对齐股价与市盈率日期…";
+    try {
+      const charts = await Promise.all(["/api/stock-price?", "/api/chart?"].map(async path => {
+        const {blob, stale} = await fetchChart(path + query);
+        const doc = new DOMParser().parseFromString(await blob.text(), "image/svg+xml");
+        const historySummary = Array.from(doc.querySelectorAll('[data-drawdown="history"] text'),
+          node => node.textContent).join(" · ");
+        return {points: JSON.parse(doc.getElementById("chart-data").textContent).points, historySummary, stale};
+      }));
+      if (driverRequests.get(panel) !== revision) return;
+      const prices = new Map(charts[0].points.map(([, , day, price]) => [day, price]));
+      const aligned = charts[1].points.filter(([, , day]) => prices.has(day))
+        .map(([, , day, pe]) => ({day, price: prices.get(day), earnings: prices.get(day) / pe, pe}));
+      panel.innerHTML = `<h3>市盈率为什么变了？</h3>
+        <label class="index-range">比较区间 <select><option value="30">最近30天</option><option value="90">最近90天</option><option value="all">图表全区间</option></select></label>
+        <p class="dates"></p><p class="history-drawdown"></p><p class="window-drawdown"></p><div class="bars"></div><strong class="interpretation"></strong>
+        <p><small>每股盈利用同日收盘价除以滚动市盈率估算。股本变化也会影响每股数字。</small></p>
+        <div class="evidence"></div>`;
+      panel.querySelector(".history-drawdown").textContent = charts[0].historySummary;
+      const evidence = panel.querySelector(".evidence");
+      evidence.textContent = "大单证据待核实。查看对应期间财报和合同公告，核对交付时间、已确认收入及利润贡献。";
+      const select = panel.querySelector("select");
+      select.value = previousWindow;
+      function draw() {
+        const last = aligned.at(-1);
+        const cutoff = last && Date.parse(last.day) - Number(select.value) * 86400000;
+        const first = select.value === "all" ? aligned[0] : aligned.find(row => Date.parse(row.day) >= cutoff);
+        const bars = panel.querySelector(".bars");
+        const conclusion = panel.querySelector(".interpretation");
+        bars.replaceChildren();
+        conclusion.textContent = "";
+        const dates = panel.querySelector(".dates");
+        const drawdown = panel.querySelector(".window-drawdown");
+        const pricePoints = charts[0].points;
+        const endDay = pricePoints.at(-1)[2];
+        const priceCutoff = select.value === "all" ? -Infinity : Date.parse(endDay) - Number(select.value) * 86400000;
+        let peak = 0, peakDay, worst = 0, from, to, startDay, count = 0;
+        for (const [, , day, price] of pricePoints) {
+          if (Date.parse(day) < priceCutoff) continue;
+          startDay ??= day;
+          count++;
+          if (price >= peak) {
+            peak = price;
+            peakDay = day;
+          } else if ((peak - price) / peak > worst) {
+            worst = (peak - price) / peak;
+            from = peakDay;
+            to = day;
+          }
+        }
+        drawdown.textContent = count < 2 ? "时间区间最大回撤率 · 收盘价样本不足" :
+          `时间区间最大回撤率 · 日收盘价 ${(worst * 100).toFixed(2)}%（${startDay} 至 ${endDay}）` +
+          (worst ? ` · 峰值日 ${from} → 谷值日 ${to}` : " · 收盘价未出现下跌");
+        if (!first || first === last) {
+          dates.textContent = "同日有效样本不足，请扩大比较区间。";
+          return;
+        }
+        dates.textContent = `${first.day} 至 ${last.day} · 两组数据共同覆盖的交易日` +
+          (charts.some(chart => chart.stale) ? " · 本次更新失败，使用已保存数据" : "");
+        const changes = ["price","earnings","pe"].map(key => (last[key] / first[key] - 1) * 100);
+        const scale = Math.max(...changes.map(Math.abs), 1);
+        ["股价","推算每股盈利","市盈率"].forEach((label, i) => {
+          const change = changes[i];
+          const row = document.createElement("div");
+          row.className = "driver-row";
+          row.innerHTML = `<span>${label}</span><span class="driver-track"><span class="driver-bar"></span></span><span>${change > 0 ? "+" : ""}${change.toFixed(1)}%</span>`;
+          const bar = row.querySelector(".driver-bar");
+          bar.style.width = Math.abs(change) / scale * 50 + "%";
+          bar.style[change < 0 ? "right" : "left"] = "50%";
+          bars.append(row);
+        });
+        const [price, earnings, pe] = changes;
+        const priceEffect = Math.log(last.price / first.price);
+        const earningsEffect = -Math.log(last.earnings / first.earnings);
+        const priceDirection = priceEffect > 0 ? "股价上涨" : "股价下跌";
+        const earningsDirection = earningsEffect > 0 ? "每股盈利减少" : "每股盈利增加";
+        const dominant = Math.abs(priceEffect) > Math.abs(earningsEffect) ? priceDirection : earningsDirection;
+        const direction = pe > 0 ? "上升" : "下降";
+        if (Math.abs(pe) < 0.05) conclusion.textContent = "区间两端的市盈率基本持平。";
+        else if (Math.abs(price) < 0.05 || Math.abs(earnings) < 0.05)
+          conclusion.textContent = `市盈率${direction}，主要由${dominant}推动。`;
+        else if (Math.sign(priceEffect) === Math.sign(earningsEffect))
+          conclusion.textContent = `${priceDirection}和${earningsDirection}共同推动市盈率${direction}。`;
+        else conclusion.textContent = `市盈率${direction}。${priceDirection}与${earningsDirection}的影响方向相反，${dominant}的影响更大。`;
+      }
+      select.addEventListener("change", draw);
+      draw();
+    } catch {
+      if (driverRequests.get(panel) === revision) panel.textContent = "股价或市盈率数据不足，暂时无法比较。";
+    }
+  }
+
+  const indexRange = document.querySelector("#index-range");
+  function updateIndices(sync = false) {
+    const range = indexRange.value;
+    return Promise.all(Array.from(document.querySelectorAll("[data-index]"), (figure) => {
+      const code = figure.dataset.index;
+      const query = new URLSearchParams({code, range});
+      if (sync) query.set("sync", "1");
+      return refreshFigure(figure, "/api/index-chart?" + query, code + "-pe-" + range + ".svg");
+    }));
+  }
+
+  const tabs = document.querySelectorAll(".tabs button");
+  const goldRange = document.querySelector("#gold-range");
+  function updateGoldPrices(sync = false) {
+    const range = goldRange.value;
+    return Promise.all(Array.from(document.querySelectorAll("[data-gold]"), (figure) => {
+      const market = figure.dataset.gold;
+      const query = new URLSearchParams({market, range});
+      if (sync) query.set("sync", "1");
+      return refreshFigure(figure, "/api/gold-chart?" + query, market + "-gold-" + range + ".svg");
+    }));
+  }
+
+  const watchRange = document.querySelector("#watch-range");
+  function updateWatch(sync = false) {
+    for (const section of watchItems.querySelectorAll(".watch-item")) updateWatchDrivers(section, sync);
+    return Promise.all(Array.from(document.querySelectorAll("[data-watch]"), figure => updateWatchFigure(figure, sync)));
+  }
+
+  function updateWatchFigure(figure, sync) {
+      const years = watchRange.value;
+      const { watch: market, code } = figure.dataset;
+      if (market === "comparison") {
+        const params = new URLSearchParams({code, years});
+        if (sync) params.set("sync", "1");
+        return refreshFigure(figure, "/api/fund-comparison?" + params, code + "-returns-" + years + "y.svg");
+      }
+      const isIndex = market === "index";
+      const query = new URLSearchParams(isIndex ? {code, range: years + "y"} : {code, market, years});
+      const isPrice = figure.hasAttribute("data-price");
+      const route = isIndex ? "/api/index-chart?" : isPrice ? "/api/stock-price?" : "/api/chart?";
+      const metric = isPrice ? "price" : market === "fund" ? "nav" : "pe";
+      if (!isIndex) query.set("dashboard", "1");
+      if (sync) query.set("sync", "1");
+      return refreshFigure(figure, route + query, code + "-" + metric + "-" + years + "y.svg");
+  }
+
+  const watchPrefix = "valuation-watch:";
+  const watchItems = document.getElementById("watch-items");
+  const addWatch = document.getElementById("add-watch");
+  const fundIndices = JSON.parse(document.getElementById("fund-indices").textContent);
+
+  const groupNames = {fund: "基金", gold: "黄金", stock: "股票"};
+  const watchGroups = new Map();
+  for (const [key, name] of Object.entries(groupNames)) {
+    const group = document.createElement("section");
+    group.className = "watch-group";
+    group.id = "watch-group-" + key;
+    const heading = document.createElement("h3");
+    heading.textContent = name;
+    const list = document.createElement("div");
+    list.className = "watch-group-list";
+    group.append(heading, list);
+    watchItems.append(group);
+    watchGroups.set(key, list);
+  }
+
+  const filterButtons = document.querySelectorAll(".watch-filters button");
+  function filterWatchList(filter) {
+    for (const button of filterButtons) {
+      button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+    }
+    for (const [key, list] of watchGroups) {
+      list.parentElement.hidden = filter !== "all" && filter !== key;
+    }
+  }
+  for (const button of filterButtons) {
+    button.addEventListener("click", () => filterWatchList(button.dataset.filter));
+  }
+
+  function defaultGroup({market}) {
+    return market === "fund" ? "fund" : "stock";
+  }
+
+  let watchCandidate;
+  function watchId({market, code}) { return market + ":" + code; }
+
+  function setWatchCandidate(item) {
+    watchCandidate = item;
+    addWatch.hidden = !item;
+    if (!item) return;
+    const id = watchId(item);
+    addWatch.disabled = localStorage.getItem(watchPrefix + id) !== null;
+    addWatch.textContent = addWatch.disabled ? "已在我的关注" : "加入我的关注";
+    addWatch.setAttribute("aria-label", addWatch.textContent + " " + item.name + " " + item.code);
+  }
+  marketSelect.addEventListener("change", () => setWatchCandidate(null));
+
+  function updateWatchDrivers(section, sync) {
+    const {code, market} = section.dataset;
+    if (market !== "a" && market !== "hk") return;
+    const query = new URLSearchParams({code, market, years: watchRange.value, dashboard: "1"});
+    if (sync) query.set("sync", "1");
+    updateDrivers(section.querySelector(".drivers").id, market, code, query);
+  }
+
+  const watchDirectory = document.getElementById("watch-directory");
+  function updateWatchDirectory() {
+    const directoryList = watchDirectory.querySelector("ul");
+    directoryList.replaceChildren();
+    for (const [key, list] of watchGroups) {
+      if (!list.childElementCount) continue;
+      const group = document.createElement("li");
+      const heading = document.createElement("strong");
+      heading.textContent = groupNames[key];
+      const links = document.createElement("ul");
+      for (const section of list.children) {
+        const link = document.createElement("a");
+        link.href = "#" + section.id;
+        link.textContent = section.querySelector(".watch-heading h4").textContent;
+        const item = document.createElement("li");
+        item.append(link);
+        links.append(item);
+      }
+      group.append(heading, links);
+      directoryList.append(group);
+    }
+  }
+  watchDirectory.addEventListener("click", event => {
+    const link = event.target.closest("a");
+    if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const section = document.getElementById(link.hash.slice(1));
+    if (!section) return;
+    watchDirectory.hidePopover();
+    if (document.getElementById("watch-panel").hidden) {
+      showTab(document.querySelector('.tabs [aria-controls="watch-panel"]'));
+    }
+    const all = section.id === "watch-panel";
+    if (all || section.closest(".watch-group")?.hidden) filterWatchList("all");
+    const heading = all ? document.getElementById("watch-title") : section.querySelector(".watch-heading h4");
+    heading.tabIndex = -1;
+    heading.focus({preventScroll: true});
+  });
+
+  function restoreWatchList() {
+    const records = new Map();
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(watchPrefix)) continue;
+      let item;
+      try { item = JSON.parse(localStorage.getItem(key)); } catch { continue; }
+      if (!item || !["a", "hk", "fund", "index"].includes(item.market) || typeof item.name !== "string" ||
+          !(item.market === "index" ? /^(?:[A-Z]{1,6}|\d{6})$/ : item.market === "hk" ? /^\d{5}$/ : /^\d{6}$/).test(item.code) ||
+          key !== watchPrefix + watchId(item)) continue;
+      if (!watchGroups.has(item.group)) {
+        item.group = defaultGroup(item);
+        localStorage.setItem(key, JSON.stringify(item));
+      }
+      records.set(watchId(item), item);
+    }
+    for (const section of watchItems.querySelectorAll(".watch-item")) {
+      const id = watchId(section.dataset);
+      const item = records.get(id);
+      if (item) {
+        const list = watchGroups.get(item.group);
+        if (section.parentElement !== list) list.prepend(section);
+        section.querySelector(".watch-options select").value = item.group;
+        records.delete(id);
+        continue;
+      }
+      for (const fig of section.querySelectorAll("figure")) {
+        const state = chartRequests.get(fig);
+        if (state?.url) URL.revokeObjectURL(state.url);
+        chartRequests.delete(fig);
+      }
+      section.remove();
+    }
+    for (const [id, item] of [...records].sort((a, b) => (a[1].addedAt || 0) - (b[1].addedAt || 0))) {
+      const {code, market, name} = item;
+      const section = document.createElement("section");
+      section.className = "watch-item";
+      section.id = "watch-" + market + "-" + code;
+      Object.assign(section.dataset, {market, code});
+      section.innerHTML = `<div class="watch-heading">
+        <h4></h4>
+        <button type="button" class="watch-state"><span aria-hidden="true">✓</span> 已关注</button>
+        <div class="watch-options" popover>
+          <label>所属分组<select></select></label>
+          <button type="button">移出关注</button>
+        </div>
+      </div><div class="index-charts"></div>`;
+      const stateButton = section.querySelector(".watch-state");
+      const options = section.querySelector(".watch-options");
+      const groupSelect = options.querySelector("select");
+      for (const [key, label] of Object.entries(groupNames)) groupSelect.add(new Option(label, key));
+      groupSelect.value = item.group;
+      groupSelect.onchange = () => {
+        const key = watchPrefix + id;
+        const saved = JSON.parse(localStorage.getItem(key));
+        if (saved) localStorage.setItem(key, JSON.stringify({...saved, group: groupSelect.value}));
+        options.hidePopover();
+        restoreWatchList();
+        stateButton.focus();
+      };
+      options.id = section.id + "-options";
+      stateButton.popoverTargetElement = options;
+      stateButton.setAttribute("aria-label", name + "，已关注，管理关注");
+      section.querySelector(".watch-heading h4").textContent = `【${market === "a" || market === "hk" ? "股票 · " + marketLabels[market] : marketLabels[market]}】${name}（${code}）`;
+      options.querySelector("button").onclick = () => {
+        const nextSection = section.nextElementSibling || section.previousElementSibling;
+        options.hidePopover();
+        localStorage.removeItem(watchPrefix + id);
+        restoreWatchList();
+        (nextSection?.querySelector(".watch-state") || watchRange).focus({preventScroll: true});
+      };
+      const grid = section.querySelector(".index-charts");
+      const stock = market === "a" || market === "hk";
+      if (stock) {
+        const drivers = document.createElement("section");
+        drivers.className = "drivers";
+        drivers.id = "watch-drivers-" + market + "-" + code;
+        drivers.hidden = true;
+        grid.append(drivers);
+      }
+      function addFigure(kind, symbol, label, price = false) {
+        const fig = document.createElement("figure");
+        Object.assign(fig.dataset, {watch: kind, code: symbol});
+        if (price) {
+          fig.dataset.price = "";
+          const output = document.createElement("output");
+          output.className = "latest-close";
+          output.setAttribute("aria-label", "最近收盘价");
+          fig.append(output);
+        }
+        const image = new Image();
+        image.alt = name + " · " + label;
+        const caption = document.createElement("figcaption");
+        const link = document.createElement("a");
+        link.download = "";
+        link.textContent = "下载" + label;
+        caption.append(link);
+        fig.append(image, caption);
+        if (kind === "comparison") fig.id = "returns-" + symbol;
+        grid.append(fig);
+        if (typeof enableFigure === "function") enableFigure(fig);
+      }
+      const benchmarkCode = market === "fund" && fundIndices[code];
+      if (benchmarkCode) addFigure("comparison", code, "收益对比图");
+      if (stock) addFigure(market, code, "股价图", true);
+      addFigure(market, code, market === "fund" ? "净值图" : "估值图");
+      if (benchmarkCode) addFigure("index", benchmarkCode, "跟踪指数估值图");
+      watchGroups.get(item.group).prepend(section);
+      if (!document.querySelector("#watch-panel").hidden) {
+        updateWatchDrivers(section, false);
+        for (const fig of grid.querySelectorAll("figure")) updateWatchFigure(fig, false);
+      }
+    }
+    document.getElementById("watch-empty").hidden = !!watchItems.querySelector(".watch-item");
+    updateWatchDirectory();
+    setWatchCandidate(watchCandidate);
+  }
+
+  addWatch.addEventListener("click", () => {
+    if (!watchCandidate || addWatch.disabled) return;
+    try {
+      localStorage.setItem(watchPrefix + watchId(watchCandidate), JSON.stringify({...watchCandidate, group: defaultGroup(watchCandidate), addedAt: Date.now()}));
+    } catch {
+      status.textContent = "浏览器未能保存关注，请检查本地存储设置。";
+      return;
+    }
+    restoreWatchList();
+  });
+  window.addEventListener("storage", event => {
+    if (event.key === null || event.key.startsWith(watchPrefix)) restoreWatchList();
+  });
+  restoreWatchList();
+
+  const manualReload = performance.getEntriesByType("navigation")[0]?.type === "reload";
+  let dashboardSync = Promise.resolve();
+  watchRange.addEventListener("change", async () => { await dashboardSync; updateWatch(); });
+  goldRange.addEventListener("change", async () => { await dashboardSync; updateGoldPrices(); });
+  indexRange.addEventListener("change", async () => { await dashboardSync; updateIndices(); });
+
+  function showTab(tab, sync = false) {
+    for (const item of tabs) {
+      item.setAttribute("aria-pressed", String(item === tab));
+      document.getElementById(item.getAttribute("aria-controls")).hidden = item !== tab;
+    }
+    const panel = tab.getAttribute("aria-controls");
+    sessionStorage.setItem("valuation-panel", panel);
+    if (panel === "gold-panel") return updateGoldPrices(sync);
+    return panel === "watch-panel" ? updateWatch(sync) : updateIndices(sync);
+  }
+
+  tabs.forEach((tab) => tab.addEventListener("click", () => showTab(tab)));
+  const oldGoldStock = ["#gold-stock", "#gold-stock-price", "#gold-drivers"].includes(location.hash);
+  const linkedFigure = oldGoldStock
+    ? watchGroups.get("gold").firstElementChild || document.getElementById("gold-panel")
+    : document.getElementById(location.hash.slice(1));
+  const linkedPanel = linkedFigure?.closest("section[aria-labelledby]");
+  const savedPanel = linkedPanel?.id || sessionStorage.getItem("valuation-panel");
+  const initialTab = Array.from(tabs).find((tab) => tab.getAttribute("aria-controls") === savedPanel);
+  dashboardSync = showTab(initialTab || tabs[0], manualReload);
+  if (linkedPanel) dashboardSync.then(() => linkedFigure.scrollIntoView());
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const queryDrivers = document.getElementById("query-drivers");
+    driverRequests.delete(queryDrivers);
+    queryDrivers.hidden = true;
+    setWatchCandidate(null);
+    const inputCode = codeInput.value.toUpperCase();
+    const years = document.querySelector("#years").value;
+    button.disabled = true;
+    codeInput.readOnly = true;
+    for (const figure of [price, benchmark, document.getElementById("fund-comparison")]) {
+      const previous = chartRequests.get(figure);
+      if (previous?.url) URL.revokeObjectURL(previous.url);
+      chartRequests.delete(figure);
+      figure.hidden = true;
+      figure.querySelector("img").removeAttribute("src");
+      figure.querySelector("a").removeAttribute("href");
+    }
+    document.querySelector("#stock-result").hidden = true;
+    status.textContent = `正在查询 ${inputCode}…`;
+    try {
+      if (!matches.length || matchesDay !== shanghaiDate.format(new Date())) {
+        const params = new URLSearchParams({code: inputCode});
+        const response = await fetch(`/api/instruments?${params}`);
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
+        matches = result;
+        matchesDay = shanghaiDate.format(new Date());
+        marketChoice.hidden = true;
+        marketSelect.disabled = true;
+        if (!matches.length) throw new Error("未找到该代码对应的股票、基金或指数，请核对代码。");
+        if (matches.length > 1) {
+          marketSelect.replaceChildren(new Option("请选择", ""));
+          matches.forEach(({market, name}) => {
+            marketSelect.add(new Option(`${marketLabels[market]} · ${name}`, market));
+          });
+          marketSelect.disabled = false;
+          marketChoice.hidden = false;
+          marketSelect.focus();
+        }
+      }
+      const selection = matches.length === 1 ? matches[0] : matches.find(({market}) => market === marketSelect.value);
+      if (!selection) {
+        status.textContent = "该代码匹配多个品种，请选择后点击「查看曲线」。";
+        return;
+      }
+      setWatchCandidate(selection);
+      const {code, market, name} = selection;
+      const query = new URLSearchParams({code, years, market});
+      if (market === "a" || market === "hk") {
+        updateDrivers("query-drivers", market, code, query);
+        price.hidden = false;
+        refreshFigure(price, `/api/stock-price?${query}`, `${code}-price-${years}y.svg`);
+      }
+      if (market === "fund" && fundIndices[code]) {
+        const figure = document.getElementById("fund-comparison");
+        const params = new URLSearchParams({code, years, sync: "1"});
+        figure.hidden = false;
+        refreshFigure(figure, "/api/fund-comparison?" + params, code + "-returns-" + years + "y.svg");
+      }
+      const chartRoute = market === "index"
+        ? "/api/index-chart?" + new URLSearchParams({code, range: years + "y", sync: "1"})
+        : "/api/chart?" + query;
+      const {blob, benchmarkCode} = await fetchChart(chartRoute);
+      const nextUrl = URL.createObjectURL(blob);
+      if (chartUrl) URL.revokeObjectURL(chartUrl);
+      chartUrl = nextUrl;
+      chart.src = chartUrl;
+      chart.alt = `${code} ${market === "fund" ? "单位净值" : "滚动市盈率"}曲线`;
+      resultNote.textContent = market !== "fund"
+        ? "低估线为第 20 百分位，高估线为第 80 百分位。"
+        : benchmarkCode ? "下方可查看基金收益对比与跟踪指数估值。" : "已显示基金单位净值，暂无已核实的跟踪指数估值。";
+      if (benchmarkCode) {
+        const query = new URLSearchParams({code: benchmarkCode, range: years + "y", sync: "1"});
+        const url = "/api/index-chart?" + query;
+        benchmark.hidden = false;
+        refreshFigure(benchmark, url, benchmarkCode + "-pe-" + years + "y.svg");
+      }
+      download.href = chartUrl;
+      download.download = `${code}-${market === "fund" ? "nav" : "pe"}-${years}y.svg`;
+      document.querySelector("#stock-result").hidden = false;
+      status.textContent = `已识别为${marketLabels[market]} ${name}（${code}）。`;
+    } catch (error) {
+      status.textContent = price.hidden
+        ? error.message || "查询失败，请重试。"
+        : `市盈率图暂时无法加载。 ${error.message}`;
+    } finally {
+      button.disabled = false;
+      codeInput.readOnly = false;
+    }
+  });
+</script>
+<script src="/chart-interaction.js" defer></script>
+</html>

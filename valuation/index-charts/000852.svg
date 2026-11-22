@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="550" viewBox="0 0 1040 550">
+<rect width="1040" height="550" fill="#f7f9fc"/>
+<g font-family="PingFang SC, Microsoft YaHei, sans-serif" fill="#21324a">
+<text x="50" y="50" font-size="30" font-weight="bold">中证1000（000852） 滚动市盈率走势</text>
+<text x="50" y="80" font-size="17">2026-10-20 至 2026-11-20 · PE-TTM（倍） · 理杏仁 · 总市值加权</text>
+<path d="M80 420.00H960" stroke="#dce4ef"/>
+<text x="73" y="425.00" text-anchor="end" font-size="13">32.51</text>
+<text x="80.00" y="448" text-anchor="middle" font-size="13">2026-10-20</text>
+<path d="M80 360.00H960" stroke="#dce4ef"/>
+<text x="73" y="365.00" text-anchor="end" font-size="13">35.70</text>
+<text x="250.32" y="448" text-anchor="middle" font-size="13">2026-10-26</text>
+<path d="M80 300.00H960" stroke="#dce4ef"/>
+<text x="73" y="305.00" text-anchor="end" font-size="13">38.90</text>
+<text x="420.65" y="448" text-anchor="middle" font-size="13">2026-11-01</text>
+<path d="M80 240.00H960" stroke="#dce4ef"/>
+<text x="73" y="245.00" text-anchor="end" font-size="13">42.10</text>
+<text x="590.97" y="448" text-anchor="middle" font-size="13">2026-11-07</text>
+<path d="M80 180.00H960" stroke="#dce4ef"/>
+<text x="73" y="185.00" text-anchor="end" font-size="13">45.30</text>
+<text x="761.29" y="448" text-anchor="middle" font-size="13">2026-11-13</text>
+<path d="M80 120.00H960" stroke="#dce4ef"/>
+<text x="73" y="125.00" text-anchor="end" font-size="13">48.49</text>
+<text x="960.00" y="448" text-anchor="middle" font-size="13">2026-11-20</text>
+<path d="M80 394.44H960" stroke="#157554" stroke-width="2" stroke-dasharray="3 4"/>
+<text x="80" y="483" fill="#157554" font-size="17">低估线（P20） 33.87 倍</text>
+<path d="M80 267.56H960" stroke="#946414" stroke-width="2" stroke-dasharray="8 5"/>
+<text x="350" y="483" fill="#946414" font-size="17">均值线 40.63 倍</text>
+<path d="M80 145.00H960" stroke="#b13939" stroke-width="2" stroke-dasharray="12 5"/>
+<text x="620" y="483" fill="#b13939" font-size="17">高估线（P80） 47.16 倍</text>
+<path d="M80.00 303.78 L108.39 304.35 L136.77 325.56 L165.16 311.29 L250.32 319.55 L278.71 342.45 L307.10 327.06 L335.48 338.32 L363.87 350.71 L449.03 322.36 L477.42 333.63 L505.81 302.28 L534.19 287.64 L562.58 302.85 L647.74 303.41 L676.13 294.96 L704.52 285.39 L732.90 299.47 L761.29 318.99 L846.45 338.88 L874.84 346.95 L903.23 351.64 L931.61 364.03 L960.00 395.00" fill="none" stroke="#1765bd" stroke-width="2.5" stroke-linejoin="round"/>
+<circle cx="960.00" cy="395.00" r="4.5" fill="#1765bd"/>
+<text x="80" y="516" fill="#1765bd" font-size="16">蓝线为 PE-TTM · 最近有效值 33.84 倍（2026-11-20）· 正值样本 24 条</text>
+</g></svg>
